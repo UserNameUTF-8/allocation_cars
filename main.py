@@ -7,8 +7,15 @@ from controllers.CarController import carRoute
 
 app = FastAPI()
 
+
+@app.get("/")
+def home():
+    return "It Work"
+
+
 app.include_router(adminRouter, tags=['Admins'])
 app.include_router(userRouter, tags=['Users'])
 app.include_router(carRoute, tags=['Car'])
+
 if __name__ == '__main__':
     uvicorn.run("main:app", reload=True)
