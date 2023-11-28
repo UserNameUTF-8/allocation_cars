@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from BaseModels import AddUserBaseModel, UserResponseBaseModel, UserUpdateBaseModel, UserPasswordModel
 from servers.UserService import (createUser, updateUser, getUser, getAllUsers, getAllActiveUsers, getAllBannedUsers,
-                                 updatePasswordUser,
+                                 updatePasswordUser, getNumberOfUsers,
                                  getAllUsersByName, searchUsers, deleteUser, deBanneUser, banneUser, disActiveUser,
                                  reActiveUser)
+
+from controllers.AdminController import oauth2_scheme
 
 from repostories.UserRP import ArgumentError, MailExistsError, UserNotFoundError
 
@@ -106,3 +108,8 @@ def banneUserC(id_: int):
 @userRouter.post('/de-banne/{id_}')
 def deBanneUserC(id_: int):
     return deBanneUser(id_)
+
+
+@userRouter.get('/count/all')
+def getNumberOfUsersC(current_user=Depends(oauth2_scheme)):
+    return getNumberOfUsers()

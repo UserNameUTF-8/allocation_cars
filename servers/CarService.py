@@ -26,6 +26,10 @@ def getCarById(id_: int):
     return CarRP.getCarById(id_)
 
 
+def getNumberOfCars():
+    return CarRP.getNumberCars()
+
+
 def getAllCars():
     return CarRP.getAllCars()
 

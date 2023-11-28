@@ -1,5 +1,5 @@
 from database.MainDB import session
-from sqlalchemy import Update, and_, Select, Delete
+from sqlalchemy import Update, and_, Delete, select, func
 from database.DatabaseModels import Car
 from sqlalchemy.exc import IntegrityError
 
@@ -232,10 +232,15 @@ class CarRP:
             raise IdentifierNotFoundError
         return CarResponseBaseModel(**car.__dict__)
 
+    @staticmethod
+    def getNumberCars():
+        query = select(func.count()).select_from(Car)
+        return session.execute(query).first()[0]
+
 
 if __name__ == '__main__':
     # new_car = AddCarBaseModel(identifyer_car='car004', model='BMW09', color_car='black', price_k_dinar=20000.4)
     # CarRP.addCar(new_car)
     # CarRP.disActive('car002')
 
-    print(CarRP.getByIdentifier('car04'))
+    print(CarRP.getNumberCars())

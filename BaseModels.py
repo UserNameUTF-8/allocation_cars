@@ -187,3 +187,9 @@ class AllocationUpdateBaseModel(BaseModel):
     ret_date: datetime.datetime | None = None
     is_active: bool | None = None
     is_dup: int | None = None
+
+
+class NumbersResBaseModel(BaseModel):
+    number_cars: int
+    number_admins: int
+    number_users: int

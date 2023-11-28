@@ -1,10 +1,11 @@
 import MySQLdb
 
 from database.MainDB import session
-from sqlalchemy import Update, Delete
+from sqlalchemy import Update, Delete, select, func
 from Utils import sha256
-from database.DatabaseModels import Admin
-from BaseModels import SignUpBaseModel, AdminUpdateBaseModel, AdminResponseBaseModel, AdminUpdatePasswordBaseModel
+from database.DatabaseModels import Admin, User, Car
+from BaseModels import SignUpBaseModel, AdminUpdateBaseModel, AdminResponseBaseModel, AdminUpdatePasswordBaseModel, \
+    NumbersResBaseModel
 from sqlalchemy.exc import IntegrityError
 
 
@@ -60,9 +61,10 @@ class AdminRP:
 
     @staticmethod
     def getAdminById(id_: int):
-        admin__ = session.query(Admin).filter(Admin.id_admin == id_).first()
+        admin__: Admin = session.query(Admin).filter(Admin.id_admin == id_).first()
         if admin__ is None:
             raise AdminNotFoundError(f'There is No Admin With Id {id_}')
+
         return AdminResponseBaseModel(**admin__.__dict__)
 
     @staticmethod
@@ -123,6 +125,23 @@ class AdminRP:
         session.commit()
         return {"details": f"Admin With {id_} Deleted"}
 
+    @staticmethod
+    def getAdminNumber():
+        numberAdminsQuery = select(func.count()).select_from(Admin)
+        print(numberAdminsQuery)
+        return session.execute(numberAdminsQuery).first()[0]
+
+    @staticmethod
+    def getNumberOfRes():
+        numberOfAdminsQuery = select(func.count()).select_from(Admin)
+        numberOfCarsQuery = select(func.count()).select_from(Car)
+        numberOfUsersQuery = select(func.count()).select_from(User)
+        numberAdmin = session.execute(numberOfAdminsQuery).first()[0]
+        numberCars = session.execute(numberOfCarsQuery).first()[0]
+        numberUsers = session.execute(numberOfUsersQuery).first()[0]
+
+        return NumbersResBaseModel(number_cars=numberCars, number_users=numberUsers, number_admins=numberAdmin)
+
 
 if __name__ == '__main__':
     # new_admin = SignUpBaseModel(email_admin='essid01@go.com', password_admin='HelloWorld', name_admin='Amine Essid')
@@ -137,4 +156,6 @@ if __name__ == '__main__':
     # print(AdminRP.updatePassword(AdminUpdatePasswordBaseModel(id_admin=1, password_admin="HelloMan")))
     # pass
     # print(AdminRP.updateAdmin(AdminUpdateBaseModel(id_admin=1, ip_admin='localhost')))
-    pass
+    # print(AdminRP.getAdminById(11))
+    # print(AdminRP.getAdminNumber())
+    print(AdminRP.getNumberOfRes())

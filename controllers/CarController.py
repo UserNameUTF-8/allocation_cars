@@ -3,7 +3,8 @@ from BaseModels import CarUpdateBaseModel, CarResponseBaseModel, AddCarBaseModel
 from repostories.CarRP import ArgumentError, IdentifierNotFoundError, IdentifierFound
 from servers.CarService import (addCar, updateCar, deleteCar, getAllCars, getCarById, getActiveCars,
                                 getAllAvailableCars, getAllAvailableCarsWithColor, getAllAvailableCarsWithModel,
-                                getAllAvailableCarsWithModelWithColor, activeCar, allocate, deAllocate, disActiveCar)
+                                getAllAvailableCarsWithModelWithColor, activeCar, allocate, deAllocate, disActiveCar,
+                                getNumberOfCars)
 
 carRoute = APIRouter(prefix="/cars")
 
@@ -81,3 +82,8 @@ def allocateC(id_: int):
 @carRoute.post('/de-allocated')
 def deAllocatedCarC(id_: int):
     return disActiveCar(id_)
+
+
+@carRoute.get('/count/all')
+def getNumberOfCarsC():
+    return getNumberOfCars()

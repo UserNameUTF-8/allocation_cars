@@ -48,6 +48,10 @@ def getUserById(id_: int) -> UserResponseBaseModel:
     return UserRP.getUserById(id_)
 
 
+def getNumberOfUsers():
+    return UserRP.numberOfUsers()
+
+
 def getAllUsers() -> list[UserResponseBaseModel]:
     return UserRP.getAllUsers()
 

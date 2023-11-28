@@ -7,12 +7,17 @@ from servers import AdminService
 from servers import JWTService
 from Utils import sha256
 from BaseModels import AdminResponseBaseModel, SignUpBaseModel, LoginBaseModel, AdminUpdatePasswordBaseModel, Details, \
-    AdminUpdateBaseModel
+    AdminUpdateBaseModel, NumbersResBaseModel
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 adminRouter = APIRouter(prefix="/admins")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admins/login")
+
+
+@adminRouter.get('/res/count-res', response_model=NumbersResBaseModel)
+def getNumberRes(auth=Depends(oauth2_scheme)):
+    return AdminService.getNumberRes()
 
 
 @adminRouter.get('/{id_}', response_model=AdminResponseBaseModel)
@@ -56,6 +61,11 @@ def getCurrentAdmin(adminToken=Depends(oauth2_scheme)):
     email = adminToken.get("sub")
     admin = AdminService.getAdminByEmail(email)
     return admin
+
+
+@adminRouter.get('/count/all')
+def numberOfAdmins():
+    return AdminService.getNumberOfAdmins()
 
 
 @adminRouter.patch('/')

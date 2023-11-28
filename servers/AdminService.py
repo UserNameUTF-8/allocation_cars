@@ -10,6 +10,10 @@ def getAdminById(id_: int):
     return AdminRP.AdminRP.getAdminById(id_)
 
 
+def getNumberOfAdmins():
+    return AdminRP.AdminRP.getAdminNumber()
+
+
 def getAdminByEmail(email: str):
     return AdminRP.AdminRP.getAdminByEmail(email)
 
@@ -24,3 +28,7 @@ def updatePassword(modelPass: AdminUpdatePasswordBaseModel):
 
 def deleteAdminByEmailOrId(id_: int | str):
     return AdminRP.AdminRP.deleteAdmin(id_)
+
+
+def getNumberRes():
+    return AdminRP.AdminRP.getNumberOfRes()

@@ -1,5 +1,5 @@
 from database.MainDB import session
-from sqlalchemy import Update, Delete
+from sqlalchemy import Update, Delete, select, func
 from Utils import sha256
 from database.DatabaseModels import User
 from sqlalchemy.exc import IntegrityError
@@ -222,6 +222,11 @@ class UserRP:
 
         return Details(detail="User Deleted")
 
+    @staticmethod
+    def numberOfUsers():
+        query = select(func.count()).select_from(User)
+        return session.execute(query).first()[0]
+
 
 if __name__ == '__main__':
     # users = UserRP.getAllUsers()
@@ -229,4 +234,4 @@ if __name__ == '__main__':
     #     AddUserBaseModel(name_user='User01', password_user='password_1', email_user='user01@go.com'))
     # users1 = UserRP.getAllUsers()
     # print(users1)
-    pass
+    print(UserRP.numberOfUsers())
