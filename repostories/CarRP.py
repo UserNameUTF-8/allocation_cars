@@ -162,8 +162,10 @@ class CarRP:
 
         print(str(statement).center(100, '-'))
         session.execute(statement)
-        session.commit()
-
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
         return {"detail": "Car Updated"}
 
     @staticmethod
@@ -189,28 +191,43 @@ class CarRP:
 
         statement = statement.values({Car.is_active_car: False})
         session.execute(statement)
-        session.commit()
+
+        try:
+            session.commit()
+
+        except Exception:
+            session.rollback()
+
         return {"details": "Car DisActive"}
 
     @staticmethod
     def allocate(id_: int):
         statement = Update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: True})
         session.execute(statement)
-        session.commit()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
         return True
 
     @staticmethod
     def diAllocate(id_: int):
         statement = Update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: False})
         session.execute(statement)
-        session.commit()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
         return True
 
     @staticmethod
     def allocateByIdentifier(identifier: str):
         statement = Update(Car).where(Car.identifyer_car == identifier).values({Car.is_allocated_car: True})
         session.execute(statement)
-        session.commit()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
         return {"details": f"Car with identifier {identifier} allocated"}
 
     @staticmethod

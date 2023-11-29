@@ -53,6 +53,7 @@ class AdminRP:
         try:
             session.commit()
         except IntegrityError:
+            session.rollback()
             raise MailExistsError
 
         admin__ = AdminRP.getAdminByEmail(adminInfo.email_admin)
@@ -70,6 +71,7 @@ class AdminRP:
     @staticmethod
     def getAdminByEmail(email: str):
         admin__ = session.query(Admin).filter(Admin.email_admin == email).first()
+
         if admin__ is None:
             raise AdminNotFoundError(f'Admin With This Mail Not Exists')
 
@@ -95,7 +97,10 @@ class AdminRP:
             raise ArgumentError('No Argument Specified')
 
         session.execute(query_to_update)
-        session.commit()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
 
         admin__ = AdminRP.getAdminById(updateModel.id_admin)
         return AdminResponseBaseModel(**admin__.__dict__)
@@ -110,7 +115,10 @@ class AdminRP:
         query = Update(Admin).where(Admin.id_admin == updatePassModel.id_admin).values(
             {Admin.password_admin: new_password})
         session.execute(query)
-        session.commit()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
         return AdminRP.getAdminById(updatePassModel.id_admin)
 
     @staticmethod
@@ -122,7 +130,10 @@ class AdminRP:
             statement = statement.where(Admin.email_admin == id_)
 
         session.execute(statement)
-        session.commit()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
         return {"details": f"Admin With {id_} Deleted"}
 
     @staticmethod

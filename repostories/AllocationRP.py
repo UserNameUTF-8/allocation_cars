@@ -37,7 +37,11 @@ class AllocationRP:
         history = History(id_user=allocationModel.id_user, id_car=allocationModel.id_car, is_dup=allocationModel.is_dup,
                           ret_date=allocationModel.ret_date, price_=allocationModel.price_)
         session.add(history)
-        session.commit()
+
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
 
         return session.query(History).all()[-1]
 
@@ -67,7 +71,12 @@ class AllocationRP:
     def disActiveHistory(id_: int):
         statement = Update(History).filter(History.id_history == id_).values({History.is_active: 0})
         session.execute(statement)
-        session.commit()
+
+        try:
+            session.commit()
+
+        except Exception:
+            session.rollback()
 
     @staticmethod
     def getAllActiveHistory():
@@ -89,7 +98,11 @@ class AllocationRP:
     def removeTrack(id_: int):
         statement = Update(History).filter(History.id_history == id_).values({History.is_dup: 0})
         session.execute(statement)
-        session.commit()
+
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
 
 
 if __name__ == '__main__':
