@@ -48,6 +48,7 @@ class UserRP:
         :param user:
         :return: UserResponseBaseModel
         """
+        isError = False
         UserRP.dataValidation(user)
         user.password_user = sha256(user.password_user)
         user_ = User(**user.__dict__)
@@ -55,7 +56,11 @@ class UserRP:
         try:
             session.commit()
         except IntegrityError:
-            raise MailExistsError
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
 
         return UserRP.getUserByEmail(user.email_user)
 
@@ -148,7 +153,7 @@ class UserRP:
         :param userToUpdate:
         :return:
         """
-
+        isError = False
         is_updated = False
         query_ = Update(User).where(userToUpdate.id_user == User.id_user)
         if userToUpdate.name_user:
@@ -168,25 +173,49 @@ class UserRP:
             ArgumentError('No Fields to Update')
 
         session.execute(query_)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
 
         user_ = UserRP.getUserById(userToUpdate.id_user)
         return user_
 
     @staticmethod
     def banneUser(id_: int):
+        isError = False
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_banned: True})
         session.execute(query)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
+
         return session.query(User).filter(User.id_user == id_).first()
 
     @staticmethod
     def unBanneUser(id_: int):
+        isError = False
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_banned: False})
         session.execute(query)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
         return session.query(User).filter(User.id_user == id_).first()
 
     @staticmethod
@@ -194,7 +223,15 @@ class UserRP:
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_active: 0})
         session.execute(query)
-        session.commit()
+        isError = False
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
         return session.query(User).filter(User.id_user == id_).first()
 
     @staticmethod
@@ -210,7 +247,15 @@ class UserRP:
         query = Update(User).where(User.id_user == userPass.id_user).values(
             {User.password_user: sha256(userPass.new_password)})
         session.execute(query)
-        session.commit()
+        isError = False
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
         return UserRP.getUserById(userPass.id_user)
 
     @staticmethod
@@ -218,7 +263,15 @@ class UserRP:
         query = Delete(User).where(User.id_user == id_)
         UserRP.getUserById(id_)  # Error Generator
         session.execute(query)
-        session.commit()
+        isError = False
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("There is Problem")
 
         return Details(detail="User Deleted")
 
@@ -230,8 +283,10 @@ class UserRP:
 
 if __name__ == '__main__':
     # users = UserRP.getAllUsers()
-    # new_user = UserRP.addUser(
-    #     AddUserBaseModel(name_user='User01', password_user='password_1', email_user='user01@go.com'))
+    new_user = UserRP.addUser(
+        AddUserBaseModel(name_user='User01', password_user='password_1', email_user='essid011@go.com'))
     # users1 = UserRP.getAllUsers()
     # print(users1)
-    print(UserRP.numberOfUsers())
+    # print(UserRP.numberOfUsers())
+
+    # print(session.add(new_user))

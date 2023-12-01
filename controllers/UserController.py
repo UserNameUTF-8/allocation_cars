@@ -40,7 +40,10 @@ def deleteUserByIdC(id_: int):
 
 @userRouter.patch('/password')
 def updatePasswordC(model_password_to_update: UserPasswordModel):
-    return updatePasswordUser(model_password_to_update)
+    try:
+        return updatePasswordUser(model_password_to_update)
+    except ArgumentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
 
 
 @userRouter.get('/{id_}')
@@ -102,12 +105,18 @@ def activeUserC(id_: int):
 
 @userRouter.post('/banne/{id_}')
 def banneUserC(id_: int):
-    return banneUser(id_)
+    try:
+        return banneUser(id_)
+    except ArgumentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
 
 
 @userRouter.post('/de-banne/{id_}')
 def deBanneUserC(id_: int):
-    return deBanneUser(id_)
+    try:
+        return deBanneUser(id_)
+    except ArgumentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
 
 
 @userRouter.get('/count/all')

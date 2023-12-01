@@ -53,12 +53,17 @@ class CarRP:
         if car is not None:
             raise IdentifierFound(f'car with identifier {new_car.identifyer_car} exists')
 
+        isError = False
         new_car_ = Car(**new_car.__dict__)
         session.add(new_car_)
         try:
             session.commit()
         except IntegrityError:
-            return Details(detail="Car Exists")
+            session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("Car Exists")
 
         return CarRP.getCarByIdentifier(new_car.identifyer_car)
 
@@ -162,10 +167,15 @@ class CarRP:
 
         print(str(statement).center(100, '-'))
         session.execute(statement)
+        isError = False
         try:
             session.commit()
-        except Exception:
+        except IntegrityError:
             session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("Update Failed")
         return {"detail": "Car Updated"}
 
     @staticmethod
@@ -191,43 +201,60 @@ class CarRP:
 
         statement = statement.values({Car.is_active_car: False})
         session.execute(statement)
-
+        isError = False
         try:
             session.commit()
-
-        except Exception:
+        except IntegrityError:
             session.rollback()
+            isError = True
 
+        if isError:
+            raise ArgumentError("Update Failed")
         return {"details": "Car DisActive"}
 
     @staticmethod
     def allocate(id_: int):
         statement = Update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: True})
         session.execute(statement)
+        isError = False
         try:
             session.commit()
-        except Exception:
+        except IntegrityError:
             session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("Allocation Failed")
         return True
 
     @staticmethod
     def diAllocate(id_: int):
         statement = Update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: False})
         session.execute(statement)
+        isError = False
         try:
             session.commit()
-        except Exception:
+        except IntegrityError:
             session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("Car Exists")
         return True
 
     @staticmethod
     def allocateByIdentifier(identifier: str):
         statement = Update(Car).where(Car.identifyer_car == identifier).values({Car.is_allocated_car: True})
         session.execute(statement)
+        isError = False
         try:
             session.commit()
-        except Exception:
+        except IntegrityError:
             session.rollback()
+            isError = True
+
+        if isError:
+            raise ArgumentError("Car Exists")
         return {"details": f"Car with identifier {identifier} allocated"}
 
     @staticmethod
@@ -259,5 +286,5 @@ if __name__ == '__main__':
     # new_car = AddCarBaseModel(identifyer_car='car004', model='BMW09', color_car='black', price_k_dinar=20000.4)
     # CarRP.addCar(new_car)
     # CarRP.disActive('car002')
-
-    print(CarRP.getNumberCars())
+    pass
+    # CarRP.addCar(new_car)
