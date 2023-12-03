@@ -1,5 +1,5 @@
 from database.MainDB import session
-from sqlalchemy import Update, and_, Delete, select, func
+from sqlalchemy import select, func, update, Column, delete, and_
 from database.DatabaseModels import Car
 from sqlalchemy.exc import IntegrityError
 
@@ -98,13 +98,27 @@ class CarRP:
         if car_model_to_update.car_color is None and car_model_to_update.price_k_dinar is None:
             raise ArgumentError('There is No Argument to Update')
 
-        query = Update.where(Car.id_car == car_model_to_update.id_car)
+        # query = update.where(Car.id_car == car_model_to_update.id_car)
+        query = update(Car).where(Car.id_car == car_model_to_update.id_car)
 
-        if car_model_to_update.car_color:
+        if car_model_to_update.car_color is not None:
             query = query.values({Car.color_car: car_model_to_update.car_color})
 
-        if car_model_to_update.price_k_dinar is None:
+        if car_model_to_update.price_k_dinar is not None:
             query = query.values({Car.price_k_dinar: car_model_to_update.price_k_dinar})
+
+        isError = False
+
+        with session as s:
+            s.execute(query)
+            try:
+                s.commit()
+            except IntegrityError:
+                s.rollback()
+                isError = True
+
+            if isError:
+                raise ArgumentError('There is In Data You Provide')
 
         return CarResponseBaseModel(
             **session.query(Car).filter(Car.id_car == car_model_to_update.id_car).first().__dict__)
@@ -155,7 +169,7 @@ class CarRP:
 
     @staticmethod
     def reActive(id_: int | str):
-        statement = Update(Car)
+        statement = update(Car)
 
         if type(id_) is int:
             statement = statement.filter(Car.id_car == id_)
@@ -193,7 +207,7 @@ class CarRP:
 
     @staticmethod
     def disActive(id_: int | str):
-        statement = Update(Car)
+        statement = update(Car)
         if type(id_) is int:
             statement = statement.where(Car.id_car == id_)
         else:
@@ -214,7 +228,7 @@ class CarRP:
 
     @staticmethod
     def allocate(id_: int):
-        statement = Update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: True})
+        statement = update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: True})
         session.execute(statement)
         isError = False
         try:
@@ -229,7 +243,7 @@ class CarRP:
 
     @staticmethod
     def diAllocate(id_: int):
-        statement = Update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: False})
+        statement = update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: False})
         session.execute(statement)
         isError = False
         try:
@@ -244,7 +258,7 @@ class CarRP:
 
     @staticmethod
     def allocateByIdentifier(identifier: str):
-        statement = Update(Car).where(Car.identifyer_car == identifier).values({Car.is_allocated_car: True})
+        statement = update(Car).where(Car.identifyer_car == identifier).values({Car.is_allocated_car: True})
         session.execute(statement)
         isError = False
         try:
@@ -259,7 +273,7 @@ class CarRP:
 
     @staticmethod
     def deleteCar(id_: int | str):
-        statement = Delete(Car)
+        statement = delete(Car)
         if type(id_) is int:
             statement = statement.where(Car.id_car == id_)
         else:
@@ -281,10 +295,20 @@ class CarRP:
         query = select(func.count()).select_from(Car)
         return session.execute(query).first()[0]
 
+    @staticmethod
+    def getModelsAvailable():
+        list_models = session.query(Car.model).distinct().all()
+
+        def transformToString(item: Column[str]):
+            return item[0]
+
+        rest = list(map(transformToString, list_models))
+        return rest
+
 
 if __name__ == '__main__':
-    # new_car = AddCarBaseModel(identifyer_car='car004', model='BMW09', color_car='black', price_k_dinar=20000.4)
-    # CarRP.addCar(new_car)
+    new_car = AddCarBaseModel(identifyer_car='car002', model='BMW03', color_car='black', price_k_dinar=20003)
+    CarRP.addCar(new_car)
     # CarRP.disActive('car002')
-    pass
+    print(CarRP.getModelsAvailable())
     # CarRP.addCar(new_car)

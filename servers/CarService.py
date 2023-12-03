@@ -30,6 +30,10 @@ def getNumberOfCars():
     return CarRP.getNumberCars()
 
 
+def getAllModels():
+    return CarRP.getModelsAvailable()
+
+
 def getAllCars():
     return CarRP.getAllCars()
 

@@ -157,12 +157,13 @@ class AllocationBaseModel(BaseModel):
     is_active
     is_dup
     """
-
+    id_history: int | None = None
+    is_active: bool | None = None
     id_car: int
     id_user: int
     ret_date: datetime.datetime
     price_: float
-    getdate: datetime.datetime | None = None
+    get_date: datetime.datetime | None = None
     is_dup: bool | None = None
 
 

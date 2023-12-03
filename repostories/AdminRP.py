@@ -172,9 +172,15 @@ class AdminRP:
 
         return NumbersResBaseModel(number_cars=numberCars, number_users=numberUsers, number_admins=numberAdmin)
 
+    @staticmethod
+    def getAdminsList():
+        list_admins = session.query(Admin).all()
+        return list_admins
+
 
 if __name__ == '__main__':
-    # new_admin = SignUpBaseModel(email_admin='essid01@go.com', password_admin='HelloWorld', name_admin='Amine Essid')
+    new_admin = SignUpBaseModel(email_admin='essid01@go.com', password_admin='HelloWorld', name_admin='amine essid')
+    print(AdminRP.addAdmin(new_admin))
     # try:
     #     AdminRP.addAdmin(new_admin)
     # except MailExistsError:
@@ -188,4 +194,4 @@ if __name__ == '__main__':
     # print(AdminRP.updateAdmin(AdminUpdateBaseModel(id_admin=1, ip_admin='localhost')))
     # print(AdminRP.getAdminById(11))
     # print(AdminRP.getAdminNumber())
-    print(AdminRP.getNumberOfRes())
+    # print(AdminRP.getNumberOfRes())

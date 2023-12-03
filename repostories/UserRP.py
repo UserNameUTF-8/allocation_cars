@@ -284,9 +284,9 @@ class UserRP:
 if __name__ == '__main__':
     # users = UserRP.getAllUsers()
     new_user = UserRP.addUser(
-        AddUserBaseModel(name_user='User01', password_user='password_1', email_user='essid011@go.com'))
+        AddUserBaseModel(name_user='User01', password_user='password_1', email_user='essid02@go.com'))
     # users1 = UserRP.getAllUsers()
     # print(users1)
-    # print(UserRP.numberOfUsers())
+    print(UserRP.numberOfUsers())
 
     # print(session.add(new_user))
