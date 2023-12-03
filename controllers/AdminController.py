@@ -30,7 +30,10 @@ def getAdminById(id_: int, admin=Depends(oauth2_scheme)):
 
 @adminRouter.post('/')
 def signUp(modelAdmin: SignUpBaseModel):
-    return AdminService.addAdminService(modelAdmin)
+    try:
+        return AdminService.addAdminService(modelAdmin)
+    except ArgumentError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message)
 
 
 """
