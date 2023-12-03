@@ -21,7 +21,7 @@ def getNumberRes(auth=Depends(oauth2_scheme)):
 
 
 @adminRouter.get('/{id_}', response_model=AdminResponseBaseModel)
-def getAdminById(id_: int):
+def getAdminById(id_: int, admin=Depends(oauth2_scheme)):
     try:
         return AdminService.getAdminById(id_)
     except AdminNotFoundError as e:
@@ -49,6 +49,9 @@ def getToken(credentials: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
     if admin_.password_admin != sha256(credentials.password):
         raise exception
+    if not admin_.is_active:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Your Are Currently Not Active")
+
     data = {'sub': admin_.email_admin}
     data_exp = datetime.datetime.now() + datetime.timedelta(days=5)
     encoded_data = JWTService.createAccessToken(data, data_exp)
@@ -64,7 +67,7 @@ def getCurrentAdmin(adminToken=Depends(oauth2_scheme)):
 
 
 @adminRouter.get('/count/all')
-def numberOfAdmins():
+def numberOfAdmins(auth=Depends(getCurrentAdmin)):
     return AdminService.getNumberOfAdmins()
 
 
@@ -104,3 +107,11 @@ def deleteAdmin(password_: str = Form(), current_admin: AdminResponseBaseModel =
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forget Password")
 
     return Details(detail="Manager Deleted")
+
+
+@adminRouter.get('/')
+def allAdmins(admin=Depends(getCurrentAdmin)):
+    if admin.authority != 0:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="request not Allowed")
+
+    return AdminService.getAllAdmins()

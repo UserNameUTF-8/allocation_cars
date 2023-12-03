@@ -1,7 +1,7 @@
 import datetime
 from sqlalchemy import Column, String, Boolean, Integer, Double, ForeignKey, DateTime, TEXT
 from sqlalchemy.orm import relationship
-from database.MainDB import Base
+from database.MainDB import Base, mainEngine
 
 
 class Car(Base):
@@ -113,5 +113,5 @@ if __name__ == '__main__':
 
     # user = User('user1', 'password', 'email@go.com')
     # session.add(user)
-    History.__table__.drop()
-    History.__table__.create()
+    print(mainEngine)
+    Base.metadata.create_all(mainEngine)

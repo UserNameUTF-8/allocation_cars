@@ -32,3 +32,7 @@ def deleteAdminByEmailOrId(id_: int | str):
 
 def getNumberRes():
     return AdminRP.AdminRP.getNumberOfRes()
+
+
+def getAllAdmins():
+    return AdminRP.AdminRP.getAdminsList()
