@@ -101,7 +101,7 @@ def deAllocatedCarC(id_: int, admin=Depends(getCurrentAdmin)):
     if admin.authority > 1:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Request Not Allowed")
 
-    return disActiveCar(id_)
+    return deAllocate(id_)
 
 
 @carRoute.get('/count/all')
