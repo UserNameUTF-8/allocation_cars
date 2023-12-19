@@ -1,5 +1,6 @@
-from database.MainDB import session
+from database.MainDB import mainEngine
 from sqlalchemy import select, func, update, Column, delete, and_
+from sqlalchemy.orm import Session
 from database.DatabaseModels import Car
 from sqlalchemy.exc import IntegrityError
 
@@ -55,12 +56,14 @@ class CarRP:
 
         isError = False
         new_car_ = Car(**new_car.__dict__)
-        session.add(new_car_)
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+
+        with Session(mainEngine) as session:
+            try:
+                session.add(new_car_)
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("Car Exists")
@@ -72,7 +75,9 @@ class CarRP:
         if not 3 < len(identity) < 20:
             raise ArgumentError(f'Invalid Identifier')
 
-        car_ = session.query(Car).filter(Car.identifyer_car == identity).first()
+        with Session(mainEngine) as session:
+            car_ = session.query(Car).filter(Car.identifyer_car == identity).first()
+            print(car_)
 
         if car_ is None:
             raise IdentifierNotFoundError
@@ -81,11 +86,16 @@ class CarRP:
 
     @staticmethod
     def getByIdentifier(id_: str):
-        return session.query(Car).filter(Car.identifyer_car == id_).first()
+        with Session(mainEngine) as session:
+            car = session.query(Car).filter(Car.identifyer_car == id_).first()
+
+        return car
 
     @staticmethod
     def getAllCars():
-        active_cars = session.query(Car).all()
+        query = select(Car)
+        with Session(mainEngine) as session:
+            active_cars = session.scalars(query).all()
 
         def map_(car: Car):
             return CarResponseBaseModel(**car.__dict__)
@@ -109,7 +119,7 @@ class CarRP:
 
         isError = False
 
-        with session as s:
+        with Session(mainEngine) as s:
             s.execute(query)
             try:
                 s.commit()
@@ -117,16 +127,21 @@ class CarRP:
                 s.rollback()
                 isError = True
 
-            if isError:
-                raise ArgumentError('There is In Data You Provide')
+        if isError:
+            raise ArgumentError('There is In Data You Provide')
 
-        return CarResponseBaseModel(
-            **session.query(Car).filter(Car.id_car == car_model_to_update.id_car).first().__dict__)
+        with Session(mainEngine) as session:
+
+            car = CarResponseBaseModel(
+                **session.query(Car).filter(Car.id_car == car_model_to_update.id_car).first().__dict__)
+        return car
 
     @staticmethod
     def getAllActiveCars():
+        query = select(Car).filter(Car.is_active_car == 1)
 
-        active_cars = session.query(Car).filter(Car.is_active_car == 1).all()
+        with Session(mainEngine) as session:
+            active_cars = session.scalars(query).all()
 
         def map_(car: Car):
             return CarResponseBaseModel(**car.__dict__)
@@ -136,7 +151,10 @@ class CarRP:
 
     @staticmethod
     def getAllAvailableCars():
-        active_cars = session.query(Car).filter(Car.is_allocated_car == 0).filter(Car.is_active_car).all()
+        query = select(Car).filter(Car.is_allocated_car == 0).filter(Car.is_active_car)
+        with Session(mainEngine) as session:
+            # active_cars = session.query(Car).filter(Car.is_allocated_car == 0).filter(Car.is_active_car).all()
+            active_cars = session.scalars(query).all()
 
         def map_(car: Car):
             return CarResponseBaseModel(**car.__dict__)
@@ -147,8 +165,14 @@ class CarRP:
 
     @staticmethod
     def getAvailableCarsWithColor(color: str):
-        activeCarWithColor = session.query(Car).filter(
-            and_(Car.color_car == color, Car.is_active_car == 1, Car.is_allocated_car == 0)).all()
+        query = select(Car).filter(Car.color_car == color).filter(Car.is_allocated_car == 0).filter(
+            Car.is_active_car == 1)
+
+        # activeCarWithColor = session.query(Car).filter(
+        #     and_(Car.color_car == color, Car.is_active_car == 1, Car.is_allocated_car == 0)).all()
+
+        with Session(mainEngine) as session:
+            activeCarWithColor = session.scalars(query)
 
         def map_(car: Car):
             return CarResponseBaseModel(**car.__dict__)
@@ -158,8 +182,13 @@ class CarRP:
 
     @staticmethod
     def getAvailableCarWithModel(model: str):
-        modelCarAvailable = session.query(Car).filter(
-            Car.model == model).filter(Car.is_active_car == 1).filter(Car.is_allocated_car == 0).all()
+        with Session(mainEngine) as session:
+            query = select(Car).filter(Car.model == model).filter(Car.is_active_car == 1).filter(
+                Car.is_allocated_car == 0)
+            modelCarAvailable = session.scalars(query).all()
+
+            # modelCarAvailable = session.query(Car).filter(
+            #     Car.model == model).filter(Car.is_active_car == 1).filter(Car.is_allocated_car == 0).all()
 
         def map_(car: Car):
             return CarResponseBaseModel(**car.__dict__)
@@ -180,13 +209,14 @@ class CarRP:
         statement = statement.values({Car.is_active_car: True})
 
         print(str(statement).center(100, '-'))
-        session.execute(statement)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            isError = False
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("Update Failed")
@@ -194,10 +224,10 @@ class CarRP:
 
     @staticmethod
     def getAvailableCarWithModelWithColor(model: str, color: str):
-        modelCarAvailableWithModel = (session.query(Car).filter(Car.model == model).
-                                      filter(Car.is_allocated_car == 0).
-                                      filter(Car.is_active_car == 1).filter(Car.color_car == color)
-                                      .all())
+        with Session(mainEngine) as session:
+            query = select(Car).filter(Car.model == model).filter(Car.is_active_car == 1).filter(
+                Car.is_allocated_car == 0).filter(Car.color_car == color)
+            modelCarAvailableWithModel = session.scalars(query).all()
 
         def map_(car: Car):
             return CarResponseBaseModel(**car.__dict__)
@@ -214,13 +244,14 @@ class CarRP:
             statement = statement.where(Car.identifyer_car == id_)
 
         statement = statement.values({Car.is_active_car: False})
-        session.execute(statement)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            isError = False
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("Update Failed")
@@ -229,13 +260,14 @@ class CarRP:
     @staticmethod
     def allocate(id_: int):
         statement = update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: True})
-        session.execute(statement)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            isError = False
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("Allocation Failed")
@@ -244,13 +276,14 @@ class CarRP:
     @staticmethod
     def diAllocate(id_: int):
         statement = update(Car).where(Car.id_car == id_).values({Car.is_allocated_car: False})
-        session.execute(statement)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            isError = False
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("Car Exists")
@@ -259,13 +292,14 @@ class CarRP:
     @staticmethod
     def allocateByIdentifier(identifier: str):
         statement = update(Car).where(Car.identifyer_car == identifier).values({Car.is_allocated_car: True})
-        session.execute(statement)
         isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("Car Exists")
@@ -279,36 +313,50 @@ class CarRP:
         else:
             statement = statement.where(Car.identifyer_car == id_)
 
-        session.execute(statement)
-        session.commit()
+        with Session(mainEngine) as session:
+            try:
+                session.execute(statement)
+            except IntegrityError:
+                raise
+            session.commit()
         return {"detail": f"Car with identifier {id_} deleted"}
 
     @staticmethod
     def getCarById(id_: int):
-        car = session.query(Car).filter(Car.id_car == id_).first()
+        with Session(mainEngine) as session:
+            car = session.query(Car).filter(Car.id_car == id_).first()
+
         if car is None:
-            raise IdentifierNotFoundError
+            raise IdentifierNotFoundError(f'There is No Car With Id {id_}')
         return CarResponseBaseModel(**car.__dict__)
 
     @staticmethod
     def getNumberCars():
         query = select(func.count()).select_from(Car)
-        return session.execute(query).first()[0]
+        with Session(mainEngine) as session:
+            car = session.execute(query).first()[0]
+        return car
 
     @staticmethod
     def getModelsAvailable():
-        list_models = session.query(Car.model).distinct().all()
+        with Session(mainEngine) as session:
+            list_models = session.query(Car.model).distinct().all()
+            query = select(Car.model).distinct()
+            list_models = session.scalars(query).all()
 
-        def transformToString(item: Column[str]):
-            return item[0]
+        # def transformToString(item: Column[str]):
+        #     return item[0]
 
-        rest = list(map(transformToString, list_models))
-        return rest
+        # rest = list(map(transformToString, list_models))
+        return list_models
 
 
 if __name__ == '__main__':
-    new_car = AddCarBaseModel(identifyer_car='car002', model='BMW03', color_car='black', price_k_dinar=20003)
-    CarRP.addCar(new_car)
+    # new_car = AddCarBaseModel(identifyer_car='car009', model='BMW03', color_car='black', price_k_dinar=20003)
+    # print(CarRP.addCar(new_car))
     # CarRP.disActive('car002')
-    print(CarRP.getModelsAvailable())
+    # print(CarRP.getModelsAvailable())
+    # print(CarRP.getNumberCars())
+    print(CarRP.getAllCars())
+    # print(CarRP.getCarById(1))
     # CarRP.addCar(new_car)

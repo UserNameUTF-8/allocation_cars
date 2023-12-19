@@ -1,4 +1,8 @@
-from database.MainDB import session
+from typing import Type
+
+from sqlalchemy.orm import Session
+
+from database.MainDB import mainEngine
 from sqlalchemy import Update, Delete, select, func
 from Utils import sha256
 from database.DatabaseModels import User
@@ -52,15 +56,16 @@ class UserRP:
         UserRP.dataValidation(user)
         user.password_user = sha256(user.password_user)
         user_ = User(**user.__dict__)
-        session.add(user_)
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session_:
+            session_.add(user_)
+            try:
+                session_.commit()
+            except IntegrityError:
+                session_.rollback()
+                isError = True
 
         if isError:
-            raise ArgumentError("There is Problem")
+            raise ArgumentError(f"User With Email {user.email_user} Exists")
 
         return UserRP.getUserByEmail(user.email_user)
 
@@ -71,9 +76,11 @@ class UserRP:
         :param email:
         :return UserResponse:
         """
-        user = session.query(User).filter(User.email_user == email).first()
-        if user is None:
-            raise UserNotFoundError(f'User with email {email} Not Found')
+
+        with Session(mainEngine) as session:
+            user = session.query(User).filter(User.email_user == email).first()
+            if user is None:
+                raise UserNotFoundError(f'User with email {email} Not Found')
 
         return UserResponseBaseModel(**user.__dict__)
 
@@ -84,8 +91,8 @@ class UserRP:
         :param id_:
         :return UserResponseBaseModel:
         """
-
-        user = session.query(User).filter(User.id_user == id_).first()
+        with Session(mainEngine) as session:
+            user = session.query(User).filter(User.id_user == id_).first()
 
         if user is None:
             raise UserNotFoundError(f'user with id {id_} does not Exists')
@@ -98,9 +105,10 @@ class UserRP:
         :return list[UserResponseBaseModel]:
         """
 
-        users_ = session.query(User).all()
+        with Session(mainEngine) as session:
+            users_: list[Type[User]] = session.query(User).all()
 
-        def map_(user: User):
+        def map_(user: Type[User]):
             return UserResponseBaseModel(**user.__dict__)
 
         new_list = list(map(map_, users_))
@@ -108,9 +116,10 @@ class UserRP:
 
     @staticmethod
     def getAllActiveUsers() -> list[UserResponseBaseModel]:
-        active_users = session.query(User).filter(User.is_active).all()
+        with Session(mainEngine) as session:
+            active_users = session.query(User).filter(User.is_active).all()
 
-        def map_(user: User):
+        def map_(user: Type[User]):
             return UserResponseBaseModel(**user.__dict__)
 
         new_list = list(map(map_, active_users))
@@ -118,9 +127,10 @@ class UserRP:
 
     @staticmethod
     def getAllBannedUsers() -> list[UserResponseBaseModel]:
-        banned_users = session.query(User).filter(User.is_banned).all()
+        with Session(mainEngine) as session:
+            banned_users = session.query(User).filter(User.is_banned).all()
 
-        def map_(user: User):
+        def map_(user: Type[User]):
             return UserResponseBaseModel(**user.__dict__)
 
         new_list = list(map(map_, banned_users))
@@ -128,9 +138,10 @@ class UserRP:
 
     @staticmethod
     def getUsersByName(name: str) -> list[UserResponseBaseModel]:
-        users_ = session.query(User).filter(User.name_user == name).all()
+        with Session(mainEngine) as session:
+            users_ = session.query(User).filter(User.name_user == name).all()
 
-        def map_(user: User):
+        def map_(user: Type[User]):
             return UserResponseBaseModel(**user.__dict__)
 
         new_list = list(map(map_, users_))
@@ -138,9 +149,10 @@ class UserRP:
 
     @staticmethod
     def searchUsersByName(keyword: str) -> list[UserResponseBaseModel]:
-        users_ = session.query(User).filter(User.name_user.like(f'%{keyword}%'))
+        with Session(mainEngine) as session:
+            users_ = session.query(User).filter(User.name_user.like(f'%{keyword}%'))
 
-        def map_(user: User):
+        def map_(user: Type[User]):
             return UserResponseBaseModel(**user.__dict__)
 
         new_list = list(map(map_, users_))
@@ -172,12 +184,14 @@ class UserRP:
         if not is_updated:
             ArgumentError('No Fields to Update')
 
-        session.execute(query_)
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+
+            session.execute(query_)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -190,29 +204,32 @@ class UserRP:
         isError = False
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_banned: True})
-        session.execute(query)
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(query)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
+            if isError:
+                raise ArgumentError("There is Problem")
 
-        if isError:
-            raise ArgumentError("There is Problem")
-
-        return session.query(User).filter(User.id_user == id_).first()
+            return session.query(User).filter(User.id_user == id_).first()
 
     @staticmethod
     def unBanneUser(id_: int):
         isError = False
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_banned: False})
-        session.execute(query)
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+
+        with Session(mainEngine) as session:
+
+            session.execute(query)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -222,13 +239,14 @@ class UserRP:
     def disActiveUser(id_: int):
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_active: 0})
-        session.execute(query)
         isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(query)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -238,21 +256,24 @@ class UserRP:
     def active(id_: int):
         query = Update(User).where(User.id_user == id_)
         query = query.values({User.is_active: 1})
-        session.execute(query)
-        session.commit()
-        return session.query(User).filter(User.id_user == id_).first()
+
+        with Session(mainEngine) as session:
+            session.execute(query)
+            session.commit()
+            return session.query(User).filter(User.id_user == id_).first()
 
     @staticmethod
     def updatePassword(userPass: UserPasswordModel):
         query = Update(User).where(User.id_user == userPass.id_user).values(
             {User.password_user: sha256(userPass.new_password)})
-        session.execute(query)
         isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(query)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -262,13 +283,14 @@ class UserRP:
     def deleteUser(id_: int) -> Details:
         query = Delete(User).where(User.id_user == id_)
         UserRP.getUserById(id_)  # Error Generator
-        session.execute(query)
         isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(query)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -278,15 +300,18 @@ class UserRP:
     @staticmethod
     def numberOfUsers():
         query = select(func.count()).select_from(User)
-        return session.execute(query).first()[0]
+        with Session(mainEngine) as session:
+            return session.execute(query).first()[0]
 
 
 if __name__ == '__main__':
     # users = UserRP.getAllUsers()
-    new_user = UserRP.addUser(
-        AddUserBaseModel(name_user='User01', password_user='password_1', email_user='essid02@go.com'))
+    # new_user = UserRP.addUser(
+    #     AddUserBaseModel(name_user='User04', password_user='password_1', email_user='essid02@go.com'))
+    # print(new_user)
     # users1 = UserRP.getAllUsers()
     # print(users1)
     print(UserRP.numberOfUsers())
+    print(UserRP.getAllUsers())
 
     # print(session.add(new_user))

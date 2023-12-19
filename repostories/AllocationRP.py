@@ -3,13 +3,14 @@ from typing import List
 
 from sqlalchemy import Update, desc
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 import repostories.UserRP
 from BaseModels import AllocationBaseModel, Details
 from database.DatabaseModels import Car, User, History
 from repostories.UserRP import UserNotFoundError
 from repostories.CarRP import IdentifierNotFoundError
-from database.MainDB import session
+from database.MainDB import mainEngine
 from repostories.CarRP import ArgumentError
 from servers.UserService import getUserById
 from servers.CarService import getCarById, allocate, deAllocate
@@ -60,15 +61,15 @@ class AllocationRP:
 
         history = History(id_user=allocationModel.id_user, id_car=allocationModel.id_car, is_dup=allocationModel.is_dup,
                           ret_date=allocationModel.ret_date, price_=allocationModel.price_)
-        session.add(history)
 
-        cause = ""
-
-        try:
-            session.commit()
-        except IntegrityError as e:
-            session.rollback()
-            cause = e.detail
+        with Session(mainEngine) as session:
+            session.add(history)
+            cause = ""
+            try:
+                session.commit()
+            except IntegrityError as e:
+                session.rollback()
+                cause = e.detail
 
         if len(cause) > 0:
             raise ArgumentError(cause)
@@ -92,11 +93,11 @@ class AllocationRP:
         deAllocate(allocation.id_car)
 
         cause = ""
-        with session as s:
+        with Session(mainEngine) as s:
             try:
                 s.commit()
             except IntegrityError as e:
-                session.rollback()
+                s.rollback()
                 cause = e.detail
 
         if len(cause):
@@ -106,40 +107,55 @@ class AllocationRP:
 
     @staticmethod
     def getAllHistory():
-        return AllocationRP.toHistoryModel(session.query(History).order_by(desc(History.get_date)).all())
+        history_ = None
+
+        with Session(mainEngine) as session:
+            return AllocationRP.toHistoryModel(session.query(History).order_by(desc(History.get_date)).all())
 
     @staticmethod
     def getHistoryOfUser(id_: int):
-        ret = session.query(History).filter(History.id_user == id_).order_by(desc(History.get_date)).all()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.id_user == id_).order_by(desc(History.get_date)).all()
         return AllocationRP.toHistoryModel(ret)
 
     @staticmethod
     def getHistoryOfCar(id_: int):
-        ret = session.query(History).filter(History.id_car == id_).order_by(desc(History.get_date)).all()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.id_car == id_).order_by(desc(History.get_date)).all()
         return AllocationRP.toHistoryModel(ret)
 
     @staticmethod
     def getHistory(id_user: int, id_car: int, date_: datetime.datetime):
-
-        ret = session.query(History).filter(History.id_car == id_car).filter(History.id_user == id_user).filter(
-            History.get_date == date_).first()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.id_car == id_car).filter(History.id_user == id_user).filter(
+                History.get_date == date_).first()
         return AllocationBaseModel(**ret.__dict__)
 
     @staticmethod
     def getHistoryById(id_: int):
-        ret = session.query(History).filter(History.id_history == id_).first()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.id_history == id_).first()
+
         if ret is None:
             raise ArgumentError(f'History With Id {id_} Not Found')
         return AllocationBaseModel(**ret.__dict__)
 
     @staticmethod
     def getAllActiveHistory():
-        ret = session.query(History).filter(History.is_active == 1).order_by(desc(History.get_date)).all()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.is_active == 1).order_by(desc(History.get_date)).all()
         return AllocationRP.toHistoryModel(ret)
 
     @staticmethod
     def _getHistoryById(id_: int):
-        ret = session.query(History).filter(History.id_history == id_).first()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.id_history == id_).first()
         if ret is None:
             raise ArgumentError(f'History With Id {id_} Not Found')
 
@@ -148,51 +164,57 @@ class AllocationRP:
     @staticmethod
     def disActiveHistory(id_: int):
         statement = Update(History).filter(History.id_history == id_).values({History.is_active: 0})
-        session.execute(statement)
-        cause = ""
-        try:
-            session.commit()
-        except IntegrityError as e:
-            session.rollback()
-            cause = e.detail
-
-        if len(cause) > 0:
-            raise ArgumentError(cause)
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            cause = ""
+            try:
+                session.commit()
+            except IntegrityError as e:
+                session.rollback()
+                cause = e.detail
+            if len(cause) > 0:
+                raise ArgumentError(cause)
 
         return Details(detail='History DisActive')
 
     @staticmethod
     def getAllActiveHistory():
-        ret = session.query(History).filter(History.is_active == 1).order_by(desc(History.get_date)).all()
+        ret = None
+        with Session(mainEngine) as session:
+            ret = session.query(History).filter(History.is_active == 1).order_by(desc(History.get_date)).all()
+
         return AllocationRP.toHistoryModel(ret)
 
     @staticmethod
     def reActiveHistory(id_: int):
         statement = Update(History).filter(History.id_history == id_).values({History.is_active: 1})
-        session.execute(statement)
-        session.commit()
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            session.commit()
         return Details(detail="History Active")
 
     @staticmethod
     def addTrackToHistory(id_: int):
         statement = Update(History).filter(History.id_history == id_).values({History.is_dup: 1})
-        session.execute(statement)
-        session.commit()
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            session.commit()
 
         return Details(detail="History Tracked")
 
     @staticmethod
     def removeTrack(id_: int):
         statement = Update(History).filter(History.id_history == id_).values({History.is_dup: 0})
-        session.execute(statement)
-        isError = False
-        cause = ""
-        try:
-            session.commit()
-        except IntegrityError as e:
-            session.rollback()
-            isError = True
-            cause = e.detail
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            isError = False
+            cause = ""
+            try:
+                session.commit()
+            except IntegrityError as e:
+                session.rollback()
+                isError = True
+                cause = e.detail
 
         if isError:
             raise ArgumentError(cause)
@@ -201,18 +223,18 @@ class AllocationRP:
 
     @staticmethod
     def getBlackHistory():
-        return AllocationRP.toHistoryModel(session.query(History).filter(History.is_active == 1).filter(
-            History.ret_date < datetime.datetime.now()).all())
+        with Session(mainEngine) as session:
+            return AllocationRP.toHistoryModel(session.query(History).filter(History.is_active == 1).filter(
+                History.ret_date < datetime.datetime.now()).all())
 
 
 if __name__ == '__main__':
-    # print(AllocationRP.addAllocation(
-    #     AllocationBaseModel(id_car=2, id_user=3, ret_date=datetime.datetime.now() + datetime.timedelta(days=3),
-    #                         price_=34.32)))
+    print(AllocationRP.addAllocation(
+        AllocationBaseModel(id_car=7, id_user=3, ret_date=datetime.datetime.now() + datetime.timedelta(days=3),
+                            price_=34.32)))
     # # # AllocationRP.disAllocate(7)
 
     AllocationRP.addTrackToHistory(9)
-    pass
     # history_ = AllocationRP.getAllHistory()
     # print(AllocationRP.getBlackHistory())
 

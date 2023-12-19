@@ -16,12 +16,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admins/login")
 
 
 @adminRouter.get('/res/count-res', response_model=NumbersResBaseModel)
-def getNumberRes(auth=Depends(oauth2_scheme)):
+async def getNumberRes(auth=Depends(oauth2_scheme)):
     return AdminService.getNumberRes()
 
 
 @adminRouter.get('/{id_}', response_model=AdminResponseBaseModel)
-def getAdminById(id_: int, admin=Depends(oauth2_scheme)):
+async def getAdminById(id_: int, admin=Depends(oauth2_scheme)):
     try:
         return AdminService.getAdminById(id_)
     except AdminNotFoundError as e:
@@ -29,7 +29,7 @@ def getAdminById(id_: int, admin=Depends(oauth2_scheme)):
 
 
 @adminRouter.post('/')
-def signUp(modelAdmin: SignUpBaseModel):
+async def signUp(modelAdmin: SignUpBaseModel):
     try:
         return AdminService.addAdminService(modelAdmin)
     except ArgumentError as e:
@@ -42,9 +42,10 @@ def signUp(modelAdmin: SignUpBaseModel):
 
 
 @adminRouter.post('/login')
-def getToken(credentials: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def getToken(credentials: Annotated[OAuth2PasswordRequestForm, Depends()]):
     exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Username Or Password Incorrect")
     admin_: AdminResponseBaseModel
+
     try:
         admin_ = AdminService.getAdminByEmail(credentials.username)
     except AdminNotFoundError as e:
@@ -62,7 +63,7 @@ def getToken(credentials: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 
 @adminRouter.get('/get/current', response_model=AdminResponseBaseModel)
-def getCurrentAdmin(adminToken=Depends(oauth2_scheme)):
+async def getCurrentAdmin(adminToken=Depends(oauth2_scheme)):
     adminToken: dict = JWTService.decodeAccessToken(adminToken)
     email = adminToken.get("sub")
     admin = AdminService.getAdminByEmail(email)
@@ -70,12 +71,12 @@ def getCurrentAdmin(adminToken=Depends(oauth2_scheme)):
 
 
 @adminRouter.get('/count/all')
-def numberOfAdmins(auth=Depends(getCurrentAdmin)):
+async def numberOfAdmins(auth=Depends(getCurrentAdmin)):
     return AdminService.getNumberOfAdmins()
 
 
 @adminRouter.patch('/')
-def update(adminNewInfo: AdminUpdateBaseModel, current_admin=Depends(getCurrentAdmin)):
+async def update(adminNewInfo: AdminUpdateBaseModel, current_admin=Depends(getCurrentAdmin)):
     adminNewInfo.id_admin = current_admin.id_admin
     admin: AdminResponseBaseModel | None = None
     try:
@@ -90,8 +91,8 @@ def update(adminNewInfo: AdminUpdateBaseModel, current_admin=Depends(getCurrentA
 
 
 @adminRouter.put('/password')
-def updatePassword(new_password=Form(), old_password=Form(),
-                   current_admin: AdminResponseBaseModel = Depends(getCurrentAdmin)):
+async def updatePassword(new_password=Form(), old_password=Form(),
+                         current_admin: AdminResponseBaseModel = Depends(getCurrentAdmin)):
     if sha256(old_password) != current_admin.password_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="incorrect old password")
 
@@ -103,7 +104,8 @@ def updatePassword(new_password=Form(), old_password=Form(),
 
 
 @adminRouter.delete('/', response_model=Details)
-def deleteAdmin(password_: str = Form(), current_admin: AdminResponseBaseModel = Depends(getCurrentAdmin)) -> Details:
+async def deleteAdmin(password_: str = Form(),
+                      current_admin: AdminResponseBaseModel = Depends(getCurrentAdmin)) -> Details:
     if sha256(password_) == current_admin.password_admin:
         AdminService.deleteAdminByEmailOrId(current_admin.id_admin)
     else:
@@ -113,7 +115,7 @@ def deleteAdmin(password_: str = Form(), current_admin: AdminResponseBaseModel =
 
 
 @adminRouter.get('/')
-def allAdmins(admin=Depends(getCurrentAdmin)):
+async def allAdmins(admin=Depends(getCurrentAdmin)):
     if admin.authority != 0:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="request not Allowed")
 

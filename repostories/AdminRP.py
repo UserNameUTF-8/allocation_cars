@@ -1,6 +1,9 @@
-import MySQLdb
+from typing import Type
 
-from database.MainDB import session
+import MySQLdb
+from sqlalchemy.orm import Session
+
+from database.MainDB import mainEngine
 from sqlalchemy import Update, Delete, select, func
 from Utils import sha256
 from database.DatabaseModels import Admin, User, Car
@@ -49,13 +52,14 @@ class AdminRP:
         adminInfo.password_admin = sha256(adminInfo.password_admin)
 
         new__admin = Admin(**adminInfo.__dict__)
-        session.add(new__admin)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.add(new__admin)
+            isError = False
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -66,7 +70,8 @@ class AdminRP:
 
     @staticmethod
     def getAdminById(id_: int):
-        admin__: Admin = session.query(Admin).filter(Admin.id_admin == id_).first()
+        with Session(mainEngine) as session:
+            admin__: Type[Admin] = session.query(Admin).filter(Admin.id_admin == id_).first()
         if admin__ is None:
             raise AdminNotFoundError(f'There is No Admin With Id {id_}')
 
@@ -74,7 +79,10 @@ class AdminRP:
 
     @staticmethod
     def getAdminByEmail(email: str):
-        admin__ = session.query(Admin).filter(Admin.email_admin == email).first()
+        # admin__ = session.query(Admin).filter(Admin.email_admin == email).first()
+        # query = select(Admin).filter(Admin.email_admin == email)
+        with Session(mainEngine) as session_:
+            admin__ = session_.query(Admin).filter(Admin.email_admin == email).first()
 
         if admin__ is None:
             raise AdminNotFoundError(f'Admin With This Mail Not Exists')
@@ -96,17 +104,16 @@ class AdminRP:
                 raise ArgumentError('Invalid IP Address')
             query_to_update = query_to_update.values({Admin.ip_admin: updateModel.ip_admin})
             is_update_same_thing = True
-
+        isError = False
         if not is_update_same_thing:
             raise ArgumentError('No Argument Specified')
-
-        session.execute(query_to_update)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(query_to_update)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -123,13 +130,14 @@ class AdminRP:
 
         query = Update(Admin).where(Admin.id_admin == updatePassModel.id_admin).values(
             {Admin.password_admin: new_password})
-        session.execute(query)
         isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(query)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -138,18 +146,18 @@ class AdminRP:
     @staticmethod
     def deleteAdmin(id_: int | str):
         statement = Delete(Admin)
+        isError = False
         if type(id_) is int:
             statement = statement.where(Admin.id_admin == id_)
         else:
             statement = statement.where(Admin.email_admin == id_)
-
-        session.execute(statement)
-        isError = False
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            isError = True
+        with Session(mainEngine) as session:
+            session.execute(statement)
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                isError = True
 
         if isError:
             raise ArgumentError("There is Problem")
@@ -158,29 +166,30 @@ class AdminRP:
     @staticmethod
     def getAdminNumber():
         numberAdminsQuery = select(func.count()).select_from(Admin)
-        print(numberAdminsQuery)
-        return session.execute(numberAdminsQuery).first()[0]
+        with Session(mainEngine) as session:
+            return session.execute(numberAdminsQuery).first()[0]
 
     @staticmethod
     def getNumberOfRes():
         numberOfAdminsQuery = select(func.count()).select_from(Admin)
         numberOfCarsQuery = select(func.count()).select_from(Car)
         numberOfUsersQuery = select(func.count()).select_from(User)
-        numberAdmin = session.execute(numberOfAdminsQuery).first()[0]
-        numberCars = session.execute(numberOfCarsQuery).first()[0]
-        numberUsers = session.execute(numberOfUsersQuery).first()[0]
+        with Session(mainEngine) as session:
+            numberAdmin = session.execute(numberOfAdminsQuery).first()[0]
+            numberCars = session.execute(numberOfCarsQuery).first()[0]
+            numberUsers = session.execute(numberOfUsersQuery).first()[0]
 
         return NumbersResBaseModel(number_cars=numberCars, number_users=numberUsers, number_admins=numberAdmin)
 
     @staticmethod
     def getAdminsList():
-        list_admins = session.query(Admin).all()
-        return list_admins
+        with Session(mainEngine) as session:
+            return session.query(Admin).all()
 
 
 if __name__ == '__main__':
-    new_admin = SignUpBaseModel(email_admin='essid01@go.com', password_admin='HelloWorld', name_admin='amine essid')
-    print(AdminRP.addAdmin(new_admin))
+    # new_admin = SignUpBaseModel(email_admin='essid01@go.com', password_admin='HelloWorld', name_admin='amine essid')
+    # print(AdminRP.addAdmin(new_admin))
     # try:
     #     AdminRP.addAdmin(new_admin)
     # except MailExistsError:
@@ -191,6 +200,7 @@ if __name__ == '__main__':
     # print(f'this is the admin {admin_}')
     # print(AdminRP.updatePassword(AdminUpdatePasswordBaseModel(id_admin=1, password_admin="HelloMan")))
     # pass
+    print(AdminRP.getNumberOfRes())
     # print(AdminRP.updateAdmin(AdminUpdateBaseModel(id_admin=1, ip_admin='localhost')))
     # print(AdminRP.getAdminById(11))
     # print(AdminRP.getAdminNumber())
